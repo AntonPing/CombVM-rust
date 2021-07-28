@@ -1,0 +1,14 @@
+:define foo (42);;
+
+:define bar (43);;
+
+:define add (
+    \x.\y. + x y
+);;
+
+:define fib (\n.
+    if (= n 0) 0;
+    if (= n 1) 1;
+        + (fib ; - n 1)
+          (fib ; - n 2)
+);;

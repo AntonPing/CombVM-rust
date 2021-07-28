@@ -1,0 +1,8 @@
+更加舒适的repl
+raw,compiled,linked(暂时不做)
+
+多线程task系统
+copy垃圾回收
+更多的命令行指令：
+    :edit :lookup
+更多的数据结构

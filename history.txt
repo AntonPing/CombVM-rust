@@ -1,0 +1,8 @@
+#V2
++ 1 2;;
+dfd\n;;
+(fsdfds\ndsfasdfasdfasfd)
++ 1 2
+:load test.nrm
+:define foo (\\n.+ n 1)
++ 1 2
