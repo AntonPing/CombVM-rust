@@ -1,13 +1,8 @@
 #![macro_use]
-
-use std::mem;
-use std::ptr;
 use std::fmt;
 use std::ops::Deref;
 use std::fmt::Debug;
 
-use crate::heap;
-use crate::heap::*;
 use crate::term::Term::*;
 use crate::symbol::Symb;
 
@@ -104,10 +99,10 @@ macro_rules! alloc {
 macro_rules! eager {
     ($n:expr) => {
         match $n {
-            1 => { C_E1 }
-            2 => { C_E2 }
-            3 => { C_E3 }
-            4 => { C_E4 }
+            1 => { crate::term::C_E1 }
+            2 => { crate::term::C_E2 }
+            3 => { crate::term::C_E3 }
+            4 => { crate::term::C_E4 }
             _ => alloc!(E($n))
         }
     };
@@ -210,5 +205,34 @@ impl Debug for Term {
             Ifte => { write!(f,"Ifte")?; }
         }
         Ok(())
+    }
+}
+
+pub fn term_copy(term: TermRef) -> TermRef {
+    match *term {
+        App(t1,t2) => {
+            let new_t1 = term_copy(t1);
+            let new_t2 = term_copy(t2);
+            app!(new_t1,new_t2)
+        }
+        Lam(x,t) => {
+            let new_t = term_copy(t);
+            lam!(x,new_t)
+        }
+        Var(x) => {
+            var!(x)
+        }
+        DInt(x) => {
+            int!(x)
+        }
+        DBool(x) => {
+            bool!(x)
+        }
+        E(n) => {
+            eager!(n)
+        }
+        _ => {
+            term
+        }
     }
 }

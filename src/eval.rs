@@ -1,8 +1,9 @@
-use crate::heap::*;
-use crate::term::*;
+use crate::term;
+use crate::term::{ TermRef };
 use crate::term::Term::*;
 use crate::symbol;
 use crate::compile;
+
 use std::fmt;
 use std::fmt::Debug;
 
@@ -14,6 +15,7 @@ pub struct Task {
     len: usize,
     ret: Option<TermRef>,
 }
+
 
 impl Debug for Task {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -34,6 +36,16 @@ impl Debug for Task {
             writeln!(f,"----------------").unwrap();
         }
         Ok(())
+    }
+}
+
+pub fn task_copy(task: &mut Task) {
+    task.with = term::term_copy(task.with);
+    for ptr in &mut task.stack {
+        *ptr = term::term_copy(*ptr)
+    }
+    if let Some(ret) = task.ret {
+        task.ret = Some(term::term_copy(ret));
     }
 }
 
@@ -130,7 +142,7 @@ impl Task {
                     self.with = x;
                 }
                 K => {
-                    reserve!(c,x);
+                    reserve!(c,_x);
                     self.with = c;
                 }
                 S => {
@@ -283,13 +295,11 @@ impl Task {
     }
 }
 
-use crate::heap;
+
+
 
 #[test]
 fn task_eq_test() {
-    unsafe {
-        heap::heap_init();
-    }
     let task1 = Task {
         stack: vec![int!(1),int!(2),int!(3),int!(4)],
         with: int!(5),
@@ -297,7 +307,7 @@ fn task_eq_test() {
         len: 1,
         ret: None,
     };
-    let mut task2 = Task {
+    let task2 = Task {
         stack: vec![int!(1),int!(2),int!(3),int!(4)],
         with: int!(5),
         frame: vec![1,2],
@@ -310,9 +320,6 @@ fn task_eq_test() {
 
 #[test]
 fn task_call_test() {
-    unsafe {
-        heap::heap_init();
-    }
     let mut task1 = Task {
         stack: vec![int!(1),int!(2),int!(3),int!(4)],
         with: int!(5),

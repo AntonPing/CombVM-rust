@@ -3,26 +3,17 @@
 #[macro_use]
 mod heap;
 mod term;
-mod eval;
-mod parser;
 mod symbol;
+mod parser;
+mod eval;
 mod compile;
 mod task;
 
-use heap::*;
-use term::*;
-use term::Term::*;
-use symbol::*;
-use compile::*;
 use parser::*;
-use task::*;
 
-#[macro_use]
 extern crate lazy_static;
 extern crate regex;
 
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::process;
 use std::fs;
 
@@ -45,7 +36,7 @@ impl Validator for InputValidator {
 }
 
 fn main() {
-    let thread_pool = task::thread_init();
+    task::thread_init();
 
     let h = InputValidator {
         brackets: MatchingBracketValidator::new(),
@@ -80,7 +71,7 @@ fn main() {
     }
     rl.save_history("history.txt").unwrap();
     
-    thread_exit(thread_pool);
+    task::thread_exit();
 }
 
 fn command_line(input: String) {

@@ -8,6 +8,7 @@ use rand::Rng;
 use bimap::BiMap;
 use std::collections::HashMap;
 
+use crate::term;
 use crate::term::TermRef;
 use crate::parser;
 use crate::compile;
@@ -61,6 +62,14 @@ impl Debug for Symb {
         } else {
             Err(fmt::Error)
         }
+    }
+}
+
+pub fn dict_value_copy(dict: &mut DictValue) {
+    dict.parsed = term::term_copy(dict.parsed);
+    dict.compiled = term::term_copy(dict.parsed);
+    if let Some(linked) = dict.linked {
+        dict.linked = Some(term::term_copy(linked));
     }
 }
 

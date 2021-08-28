@@ -1,4 +1,3 @@
-use crate::heap::*;
 use crate::term::*;
 use crate::term::Term::*;
 use crate::symbol::*;

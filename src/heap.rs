@@ -1,13 +1,16 @@
-use std::mem;
 use std::ptr;
+use std::mem;
 use std::sync::Mutex;
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::term::{ Term, TermRef };
-use crate::term::Term::*;
-use crate::symbol::Symb;
+use crate::term;
+use crate::term::{Term, TermRef};
+use crate::eval;
+use crate::task;
 
 pub unsafe fn malloc<T>(size: usize) -> *mut T {
+    if size == 0 { return ptr::null_mut(); }
     debug_assert!(mem::size_of::<T>() > 0,
         "manually allocating a buffer of ZST is a very dangerous idea"
     );
@@ -18,6 +21,7 @@ pub unsafe fn malloc<T>(size: usize) -> *mut T {
 }
 
 pub unsafe fn free<T> (array: *mut T, size: usize) {
+    if size == 0 { return; }
     let _ : Vec<T> = Vec::from_raw_parts(array, 0, size);
 }
 
@@ -26,14 +30,21 @@ lazy_static::lazy_static! {
                             Mutex::new(Vec::new());
 }
 
+static WATERMARK: usize = 32;
 static PAGE_SIZE: usize = 65536;
+
+static STW_SINGAL: AtomicBool = AtomicBool::new(true);
+pub fn singal_running() -> bool {
+    let singal = STW_SINGAL.load(Ordering::Relaxed);
+    singal
+}
 
 thread_local! {
     pub static PAGE : RefCell<Page> =
                 RefCell::new(Page::new(PAGE_SIZE));
 }
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Debug)]
 pub struct Page {
     array: *mut Term,
     size: usize,
@@ -43,44 +54,81 @@ pub struct Page {
 unsafe impl Send for Page {}
 unsafe impl Sync for Page {}
 
+impl Drop for Page {
+    fn drop(&mut self) {
+        unsafe { free(self.array,self.size) };
+        print!("{:?} page droped",self.array);
+    }
+}
+
 impl Page {
     pub fn new(size: usize) -> Page {
-        let array: *mut Term = unsafe { 
-            malloc(size)
-        };
-        if array.is_null() {
-            panic!("failed to malloc page");
-        }
+        let array: *mut Term = unsafe { malloc(size) };
+        //assert!(!array.is_null());
         Page { array: array, size: size, index: 0 }
     }
-    pub fn alloc(&mut self, term: Term) -> TermRef {
-        //println!("alloc on {:?}", self);
-        unsafe {
-            if self.index < self.size {
-                let ptr = self.array.offset(self.index as isize);
-                *ptr = term;
-                self.index += 1;
-                //println!("ok {:?} ", *ptr);
-                TermRef::new(ptr)
-            } else {
-                println!("refresh");
-                self.refresh();
-                self.alloc(term)
-            }
-        }
-    }
-    pub fn refresh(&mut self) {
-        let mut dump = DUMP_POOL.lock().unwrap();
-        dump.push(self.clone());
-        *self = Page::new(self.size);
+}
+
+/*
+pub trait GCable {
+    fn gc(&self) -> Self;
+}
+*/
+
+pub fn run_gc() {
+    let mut dump = DUMP_POOL.lock().unwrap();
+    let mut _old_dump : Vec<Page> = dump.drain(..).collect();
+
+    let mut vec = task::drain_task();
+    while let Some(mut task) = vec.pop() {
+        eval::task_copy(&mut task);
+        task::send_task(task);
     }
 }
 
 pub fn term_alloc(term: Term) -> TermRef {
+    let mut result : Option<TermRef> = None;
+    loop {
+        PAGE.with(|page| {
+            let mut p = page.borrow_mut();
+            if p.index < p.size {
+                unsafe {
+                    let ptr = p.array.offset(p.index as isize);
+                    *ptr = term;
+                    p.index += 1;
+                    result = Some(TermRef::new(ptr));
+                }
+            }
+        });
+        if let Some(term) = result {
+            return term;       
+        } else {
+            next_page();
+        }
+    }
+}
+
+pub fn next_page() {
+    println!("refresh");
     PAGE.with(|page| {
-        let mut page2 = *page.borrow_mut();
-        let result = page2.alloc(term);
-        *page.borrow_mut() = page2;
-        result
+        let page2 = RefCell::new(Page::new(PAGE_SIZE));
+        page.swap(&page2);
+        let mut dump = DUMP_POOL.lock().unwrap();
+        dump.push(page2.into_inner());
+        if dump.len() >= WATERMARK {
+            STW_SINGAL.store(false, Ordering::Relaxed);
+        }
+    })
+}
+
+pub fn dump_page() {
+    let mut dump = DUMP_POOL.lock().unwrap();
+    PAGE.with(|page| {
+        let page2 = RefCell::new(Page::new(0));
+        page.swap(&page2);
+        dump.push(page2.into_inner());
+        if dump.len() >= WATERMARK {
+            STW_SINGAL.store(false, Ordering::Relaxed);
+        }
     })
 }

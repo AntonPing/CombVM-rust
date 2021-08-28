@@ -1,18 +1,15 @@
-use crate::TermRef;
 use crate::term::*;
 use crate::term::Term::*;
+use crate::symbol::*;
 
 extern crate regex;
 use regex::Regex;
-use lazy_static::lazy_static;
 
 #[derive(Debug)]
 pub struct Parser {
     text: String,
     index: usize,
 }
-
-use crate::symbol::*;
 
 impl Parser {
     pub fn new(str: String) -> Parser {
@@ -240,7 +237,7 @@ pub enum Command {
 pub fn read_command(par: &mut Parser) -> Option<Command> {
     par.try_read_many(vec![
         |p| {
-            if(p.read_string(":").is_some()) {
+            if p.read_string(":").is_some() {
                 return None;
             } else {
                 p.skip_space();
