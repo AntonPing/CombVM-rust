@@ -4,7 +4,8 @@ use std::sync::Mutex;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::term;
+//use crate::term;
+use crate::symbol;
 use crate::term::{Term, TermRef};
 use crate::eval;
 use crate::task;
@@ -25,6 +26,16 @@ pub unsafe fn free<T> (array: *mut T, size: usize) {
     let _ : Vec<T> = Vec::from_raw_parts(array, 0, size);
 }
 
+
+#[test]
+pub fn malloc_and_free_test() {
+    unsafe {
+        let ptr: *mut Term = malloc(100);
+        free(ptr,100);
+    }
+}
+
+
 lazy_static::lazy_static! {
     static ref DUMP_POOL: Mutex<Vec<Page>> = 
                             Mutex::new(Vec::new());
@@ -37,6 +48,12 @@ static STW_SINGAL: AtomicBool = AtomicBool::new(true);
 pub fn singal_running() -> bool {
     let singal = STW_SINGAL.load(Ordering::Relaxed);
     singal
+}
+pub fn set_singal_run() {
+    STW_SINGAL.store(true,Ordering::Relaxed);
+}
+pub fn set_singal_stop() {
+    STW_SINGAL.store(false,Ordering::Relaxed);
 }
 
 thread_local! {
@@ -57,7 +74,7 @@ unsafe impl Sync for Page {}
 impl Drop for Page {
     fn drop(&mut self) {
         unsafe { free(self.array,self.size) };
-        print!("{:?} page droped",self.array);
+        println!("free {:?}", self.array);
     }
 }
 
@@ -75,15 +92,25 @@ pub trait GCable {
 }
 */
 
-pub fn run_gc() {
+pub fn drain_dump() -> Vec<Page> {
     let mut dump = DUMP_POOL.lock().unwrap();
-    let mut _old_dump : Vec<Page> = dump.drain(..).collect();
+    dump.drain(..).collect()
+}
 
+pub fn run_gc() {
+    println!("gc_start");
+    let dump = drain_dump();
+    
     let mut vec = task::drain_task();
     while let Some(mut task) = vec.pop() {
+        println!("task:{:?}",task);
         eval::task_copy(&mut task);
         task::send_task(task);
     }
+    println!("dict_gc");
+    symbol::dict_copy();
+    println!("gc_end");
+    println!("dump = {:?}", dump);
 }
 
 pub fn term_alloc(term: Term) -> TermRef {
@@ -116,7 +143,7 @@ pub fn next_page() {
         let mut dump = DUMP_POOL.lock().unwrap();
         dump.push(page2.into_inner());
         if dump.len() >= WATERMARK {
-            STW_SINGAL.store(false, Ordering::Relaxed);
+            set_singal_stop();
         }
     })
 }
@@ -127,8 +154,5 @@ pub fn dump_page() {
         let page2 = RefCell::new(Page::new(0));
         page.swap(&page2);
         dump.push(page2.into_inner());
-        if dump.len() >= WATERMARK {
-            STW_SINGAL.store(false, Ordering::Relaxed);
-        }
     })
 }

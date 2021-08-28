@@ -209,6 +209,7 @@ impl Debug for Term {
 }
 
 pub fn term_copy(term: TermRef) -> TermRef {
+    println!("term:{:?}",term);
     match *term {
         App(t1,t2) => {
             let new_t1 = term_copy(t1);

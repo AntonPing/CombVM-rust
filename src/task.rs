@@ -18,6 +18,8 @@ static THREAD_MAX : usize = 8;
 static THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 pub fn thread_init() {
+    assert_eq!(THREAD_COUNT.load(Ordering::SeqCst), 0);
+    heap::set_singal_run();
     let mut handles = HANDLE_POOL.lock().unwrap();
     for i in 0..THREAD_MAX {
         handles.push(thread::spawn(thread_loop));
@@ -63,13 +65,18 @@ fn thread_loop() {
     }
     heap::dump_page();
     let old_count = THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
+    thread_debug_log();
     if old_count == 1 {
         // Oh! you are the chosen one!
         // Do the garbage collection please!
-        println!("TODO: gc"); // TODO: gc
         heap::run_gc();
         thread_init();
     }
-    
+    println!("i die");
+    heap::dump_page();
     // Ok, you die now.
+}
+
+pub fn thread_debug_log() {
+    println!("THREAD_COUNT : {:?}", THREAD_COUNT);
 }

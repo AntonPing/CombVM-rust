@@ -65,14 +65,6 @@ impl Debug for Symb {
     }
 }
 
-pub fn dict_value_copy(dict: &mut DictValue) {
-    dict.parsed = term::term_copy(dict.parsed);
-    dict.compiled = term::term_copy(dict.parsed);
-    if let Some(linked) = dict.linked {
-        dict.linked = Some(term::term_copy(linked));
-    }
-}
-
 #[derive(Debug)]
 pub struct DictValue {
     related: Vec<Symb>,
@@ -154,5 +146,21 @@ pub fn show_dict() {
     let map = DICT_MAP.lock().unwrap();
     for (key, value) in &*map {
         println!("{:?} := {:?}", key, *value);
+    }
+}
+
+pub fn dict_copy() {
+    let mut map = DICT_MAP.lock().unwrap();
+    for (_, value) in &mut *map {
+        dict_value_copy(value);
+        //map.insert(key,new_value);
+    }
+}
+
+pub fn dict_value_copy(dict: &mut DictValue) {
+    dict.parsed = term::term_copy(dict.parsed);
+    dict.compiled = term::term_copy(dict.parsed);
+    if let Some(linked) = dict.linked {
+        dict.linked = Some(term::term_copy(linked));
     }
 }

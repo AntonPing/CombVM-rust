@@ -46,6 +46,7 @@ fn main() {
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");
     }
+    command_line(":load test.nrm".to_string());
     loop {
         let readline = rl.readline("> ");
         match readline {
