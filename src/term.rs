@@ -6,19 +6,24 @@ use std::fmt::Debug;
 use crate::term::Term::*;
 use crate::symbol::Symb;
 
-#[derive(Clone,Copy,PartialEq,Eq)]
+#[derive(Clone,Copy,PartialEq)]
 pub enum Term {
     App(TermRef,TermRef),
     Lam(Symb,TermRef),
     Var(Symb),
-    DInt(i64),
     DBool(bool),
-    E(usize),
+    DChar(char),
+    DInt(i64),
+    DReal(f64),
+    E1,E2,E3,E4,E(u8),
     I,K,S,B,C,Sp,Bs,Cp,
     AddI,SubI,MulI,DivI,
     GrtI,LssI,EqlI,
-    Not,And,Or,
-    Ifte,
+    Not,And,Or,Ifte,
+    //List(TermRef,TermRef),
+    //EndOfList,
+    Array(usize,*mut TermRef),
+    Alloc,Free,Load,Save,
 }
 
 #[derive(Eq)]
@@ -72,10 +77,10 @@ const_term!(C_C,C);
 const_term!(C_SP,Sp);
 const_term!(C_BS,Bs);
 const_term!(C_CP,Cp);
-const_term!(C_E1,E(1));
-const_term!(C_E2,E(2));
-const_term!(C_E3,E(3));
-const_term!(C_E4,E(4));
+const_term!(C_E1,E1);
+const_term!(C_E2,E2);
+const_term!(C_E3,E3);
+const_term!(C_E4,E4);
 const_term!(C_ADDI,AddI);
 const_term!(C_SUBI,SubI);
 const_term!(C_MULI,MulI);
@@ -107,18 +112,27 @@ macro_rules! eager {
         }
     };
 }
-
 #[macro_export]
-macro_rules! int {
+macro_rules! b {
+    ($v:expr) => {
+        alloc!(DBool($v))
+    };
+}
+#[macro_export]
+macro_rules! c {
+    ($v:expr) => {
+        alloc!(DChar($v))
+    };
+}
+#[macro_export]
+macro_rules! i {
     ($v:expr) => {
         alloc!(DInt($v))
     };
 }
-
-#[macro_export]
-macro_rules! bool {
+macro_rules! r {
     ($v:expr) => {
-        alloc!(DBool($v))
+        alloc!(DReal($v))
     };
 }
 
@@ -148,6 +162,8 @@ macro_rules! var {
         alloc!(Var($x))
     };
 }
+
+
 
 impl Term {
     fn app_list_fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -181,8 +197,14 @@ impl Debug for Term {
                 with.app_list_fmt(f)?;
             }
             Var(x) => { write!(f,"{:?}",x)?; }
-            DInt(x) => { write!(f,"{}",x)?; }
             DBool(x) => { write!(f,"{}",x)?; }
+            DChar(x) => { write!(f,"{}",x)?; }
+            DInt(x) => { write!(f,"{}",x)?; }
+            DReal(x) => { write!(f,"{}",x)?; }
+            E1 => { write!(f,"E1")?; }
+            E2 => { write!(f,"E2")?; }
+            E3 => { write!(f,"E3")?; }
+            E4 => { write!(f,"E4")?; }
             E(n) => { write!(f,"E{}",n)?; }
             I => { write!(f,"I")?; }
             K => { write!(f,"K")?; }
@@ -203,13 +225,18 @@ impl Debug for Term {
             And => { write!(f,"And")?; }
             Or => { write!(f,"Or")?; }
             Ifte => { write!(f,"Ifte")?; }
+            Array(n,ptr) => { write!(f,"Array{}:{:p}",n,ptr)?; }
+            Alloc => { write!(f,"Alloc")?; }
+            Free => { write!(f,"Free")?; }
+            Load => { write!(f,"Load")?; }
+            Save => { write!(f,"Save")?; }
         }
         Ok(())
     }
 }
 
 pub fn term_copy(term: TermRef) -> TermRef {
-    println!("term:{:?}",term);
+    //println!("term:{:?}",term);
     match *term {
         App(t1,t2) => {
             let new_t1 = term_copy(t1);
@@ -223,12 +250,10 @@ pub fn term_copy(term: TermRef) -> TermRef {
         Var(x) => {
             var!(x)
         }
-        DInt(x) => {
-            int!(x)
-        }
-        DBool(x) => {
-            bool!(x)
-        }
+        DChar(x) => { c!(x) }
+        DBool(x) => { b!(x) }
+        DInt(x) => { i!(x) }
+        DReal(x) => { r!(x) }
         E(n) => {
             eager!(n)
         }

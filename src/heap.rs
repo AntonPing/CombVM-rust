@@ -74,7 +74,7 @@ unsafe impl Sync for Page {}
 impl Drop for Page {
     fn drop(&mut self) {
         unsafe { free(self.array,self.size) };
-        println!("free {:?}", self.array);
+        //println!("free {:?}", self.array);
     }
 }
 
@@ -98,19 +98,15 @@ pub fn drain_dump() -> Vec<Page> {
 }
 
 pub fn run_gc() {
-    println!("gc_start");
-    let dump = drain_dump();
-    
+    //println!("gc_start");
+    let _dump = drain_dump();
     let mut vec = task::drain_task();
     while let Some(mut task) = vec.pop() {
-        println!("task:{:?}",task);
         eval::task_copy(&mut task);
         task::send_task(task);
     }
-    println!("dict_gc");
     symbol::dict_copy();
-    println!("gc_end");
-    println!("dump = {:?}", dump);
+    //println!("gc_end");
 }
 
 pub fn term_alloc(term: Term) -> TermRef {
@@ -136,7 +132,7 @@ pub fn term_alloc(term: Term) -> TermRef {
 }
 
 pub fn next_page() {
-    println!("refresh");
+    //println!("refresh");
     PAGE.with(|page| {
         let page2 = RefCell::new(Page::new(PAGE_SIZE));
         page.swap(&page2);

@@ -65,14 +65,13 @@ fn thread_loop() {
     }
     heap::dump_page();
     let old_count = THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
-    thread_debug_log();
+    //thread_debug_log();
     if old_count == 1 {
         // Oh! you are the chosen one!
         // Do the garbage collection please!
         heap::run_gc();
         thread_init();
     }
-    println!("i die");
     heap::dump_page();
     // Ok, you die now.
 }

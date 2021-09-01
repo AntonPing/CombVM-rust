@@ -125,7 +125,7 @@ pub fn read_term(par: &mut Parser) -> Option<TermRef> {
         |p|{ read_const_func(p) },
         |p|{
             let value = read_int(p)?;
-            Some(int!(value))
+            Some(i!(value))
         },
         |p|{ read_var(p) },
         |p|{ read_lam(p) },
@@ -201,8 +201,9 @@ pub fn read_const_func(par: &mut Parser) -> Option<TermRef> {
         const_parser!(C_BS,"B*"),
         const_parser!(C_CP,"C'"),
         const_parser!(C_E1,"E1"),
-        const_parser!(C_E1,"E2"),
-        const_parser!(C_E1,"E3"),
+        const_parser!(C_E2,"E2"),
+        const_parser!(C_E3,"E3"),
+        const_parser!(C_E4,"E4"),
         const_parser!(app!(C_E2,C_ADDI),"+"),
         const_parser!(app!(C_E2,C_SUBI),"-"),
         const_parser!(app!(C_E2,C_MULI),"*"),
@@ -223,7 +224,6 @@ pub fn read_path(par: &mut Parser) -> Option<String> {
         Some(string.to_string())
     })
 }
-
 
 pub enum Command {
     Quit,Dict,

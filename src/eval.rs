@@ -87,7 +87,25 @@ impl Task {
         self.with = self.stack.pop().unwrap();
         self.len = self.frame.pop().unwrap() - 1;
     }
-
+    fn eager(&mut self, index: u8) {
+        let n = index as usize;
+        if self.len < n + 1 {
+            self.retn();
+        } else {
+            let m = self.stack.len();
+            if let Some(res) = self.ret {
+                self.stack[m - n - 1] = res;
+                self.ret = None;
+                if n == 1 {
+                    self.with = self.pop();
+                } else {
+                    self.with = eager!(index-1);
+                }
+            } else {
+                self.call(self.stack[m - n - 1]);
+            }
+        }
+    }
     pub fn eval(&mut self, timeslice: i32) -> Option<TermRef> {
         macro_rules! rewind_check {
             ($n: expr) => {
@@ -180,28 +198,25 @@ impl Task {
                     self.push(app!(f,x));
                     self.with = c;
                 }
+                E1 => {
+                    self.eager(1);
+                }
+                E2 => {
+                    self.eager(2);
+                }
+                E3 => {
+                    self.eager(3);
+                }
+                E4 => {
+                    self.eager(4);
+                }
                 E(n) => {
-                    if self.len < n + 1 {
-                        self.retn();
-                    } else {
-                        let m = self.stack.len();
-                        if let Some(res) = self.ret {
-                            self.stack[m - n - 1] = res;
-                            self.ret = None;
-                            if n == 1 {
-                                self.with = self.pop();
-                            } else {
-                                self.with = eager!(n-1);
-                            }
-                        } else {
-                            self.call(self.stack[m - n - 1]);
-                        }
-                    }
+                    self.eager(n);
                 }
                 AddI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = int!(a + b);
+                        self.with = i!(a + b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -209,7 +224,7 @@ impl Task {
                 SubI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = int!(a - b);
+                        self.with = i!(a - b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -217,7 +232,7 @@ impl Task {
                 MulI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = int!(a * b);
+                        self.with = i!(a * b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -225,7 +240,7 @@ impl Task {
                 DivI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = int!(a / b);
+                        self.with = i!(a / b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -233,7 +248,7 @@ impl Task {
                 GrtI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = bool!(a > b);
+                        self.with = b!(a > b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -241,7 +256,7 @@ impl Task {
                 LssI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = bool!(a < b);
+                        self.with = b!(a < b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -249,7 +264,7 @@ impl Task {
                 EqlI => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = bool!(a == b);
+                        self.with = b!(a == b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -257,7 +272,7 @@ impl Task {
                 Not => {
                     reserve!(x,y);
                     if let (DInt(a),DInt(b)) = (*x,*y) {
-                        self.with = bool!(a == b);
+                        self.with = b!(a == b);
                     } else {
                         panic!("{:?} takes two interger!",self.with);
                     }
@@ -296,44 +311,3 @@ impl Task {
 }
 
 
-
-
-#[test]
-fn task_eq_test() {
-    let task1 = Task {
-        stack: vec![int!(1),int!(2),int!(3),int!(4)],
-        with: int!(5),
-        frame: vec![1,2],
-        len: 1,
-        ret: None,
-    };
-    let task2 = Task {
-        stack: vec![int!(1),int!(2),int!(3),int!(4)],
-        with: int!(5),
-        frame: vec![1,2],
-        len: 1,
-        ret: None,
-    };
-    assert_eq!(task1,task2);
-}
-
-
-#[test]
-fn task_call_test() {
-    let mut task1 = Task {
-        stack: vec![int!(1),int!(2),int!(3),int!(4)],
-        with: int!(5),
-        frame: vec![1,2],
-        len: 1,
-        ret: None,
-    };
-    let task2 = Task {
-        stack: vec![int!(1),int!(2),int!(3),int!(4),int!(5)],
-        with: int!(6),
-        frame: vec![1,2,2],
-        len: 0,
-        ret: None,
-    };
-    task1.call(int!(6));
-    assert_eq!(task1,task2);
-}
