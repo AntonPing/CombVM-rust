@@ -30,7 +30,7 @@ pub unsafe fn free<T> (array: *mut T, size: usize) {
 #[test]
 pub fn malloc_and_free_test() {
     unsafe {
-        let ptr: *mut Term = malloc(100);
+        let ptr: *mut i32 = malloc(100);
         free(ptr,100);
     }
 }

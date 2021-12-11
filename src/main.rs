@@ -1,6 +1,7 @@
-#![feature(thread_local)]
+//#![feature(thread_local)]
 
 #[macro_use]
+mod util;
 mod heap;
 mod term;
 mod symbol;
@@ -8,6 +9,8 @@ mod parser;
 mod eval;
 mod compile;
 mod task;
+mod infer;
+
 
 use parser::*;
 

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Debug;
 use std::sync::Mutex;
@@ -31,15 +32,18 @@ impl PartialEq for Symb {
 
 impl Symb {
     pub fn new(right: &str) -> Symb {
+        Symb::from_string(right.to_string())
+    }
+    pub fn from_string(right: String) -> Symb {
         let mut map = SYMB_MAP.lock().unwrap();
-        if let Some(left) = map.get_by_right(&right.to_string()) {
+        if let Some(left) = map.get_by_right(&right) {
             return Symb(*left);
         } else {
             let mut rnd: u32 = rand::thread_rng().gen();
             while map.contains_left(&rnd) {
                 rnd = rand::thread_rng().gen();
             }
-            map.insert(rnd,right.to_string());
+            map.insert(rnd,right);
             return Symb(rnd);
         }
     }
